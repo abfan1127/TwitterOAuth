@@ -9,6 +9,9 @@
  *
  * Single-user OAuth with Examples
  * https://dev.twitter.com/oauth/overview/single-user
+ *
+ * Tokens from dev.twitter.com
+ * https://dev.twitter.com/oauth/overview/application-owner-access-tokens
  */
 
 namespace TwitterOAuth;
