@@ -10,10 +10,10 @@
 
 namespace TwitterOAuth\Exception;
 
-class TwitterException extends \Exception
+class CurlException extends \Exception
 {
     public function __toString()
     {
-        return 'Twitter Response: [' . $this->code . '] ' . $this->message . ' (' . __CLASS__ . ') ';
+        return 'cURL Lib: [' . $this->code . '] ' . $this->message . ' (' . __CLASS__ . ') ';
     }
 }

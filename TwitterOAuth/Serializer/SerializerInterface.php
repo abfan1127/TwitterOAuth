@@ -8,12 +8,15 @@
  * @copyright 2014
  */
 
-namespace TwitterOAuth\Exception;
+namespace TwitterOAuth\Serializer;
 
-class TwitterException extends \Exception
+interface SerializerInterface
 {
-    public function __toString()
-    {
-        return 'Twitter Response: [' . $this->code . '] ' . $this->message . ' (' . __CLASS__ . ') ';
-    }
+    /**
+     * Format Output
+     *
+     * @param  string $response
+     * @return mixed
+     */
+    public function format($response);
 }
