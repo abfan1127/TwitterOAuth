@@ -14,6 +14,8 @@ PHP library to communicate with Twitter OAuth API version 1.1.
 
 - PHP Version >= 5.3
 - PHP cURL extension
+- PHP JSON extension
+- PHP OpenSSL extension
 
 ## Installation ##
 
