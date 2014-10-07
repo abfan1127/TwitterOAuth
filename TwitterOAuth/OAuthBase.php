@@ -11,12 +11,18 @@
 namespace TwitterOAuth;
 
 use TwitterOAuth\Common\Curl;
+use TwitterOAuth\Exception\FileNotFound;
+use TwitterOAuth\Exception\FileNotReadable;
 use TwitterOAuth\Exception\TwitterException;
+use TwitterOAuth\Exception\UnsupportedMime;
 use TwitterOAuth\Serializer\ObjectSerializer;
 use TwitterOAuth\Serializer\SerializerInterface;
 
 class OAuthBase
 {
+    const EOL = "\r\n";
+
+
     protected $config = array();
 
     protected $serializer = null;
@@ -98,19 +104,17 @@ class OAuthBase
 
         $this->call = $call;
 
-
         if ($getParams !== null && is_array($getParams)) {
             $this->getParams = $getParams;
         }
-
-
-        unset($call, $getParams);
 
         $response = $this->getResponse();
 
         $this->findExceptions($response);
 
         $this->headers = $response['headers'];
+
+        unset($call, $getParams);
 
         return $this->serializer->format($response['body']);
     }
@@ -130,24 +134,21 @@ class OAuthBase
 
         $this->call = $call;
 
-
         if ($postParams !== null && is_array($postParams)) {
             $this->postParams = $postParams;
         }
 
-
         if ($getParams !== null && is_array($getParams)) {
             $this->getParams = $getParams;
         }
-
-
-        unset($call, $postParams, $getParams);
 
         $response = $this->getResponse();
 
         $this->findExceptions($response);
 
         $this->headers = $response['headers'];
+
+        unset($call, $postParams, $getParams);
 
         return $this->serializer->format($response['body']);
     }
@@ -193,11 +194,98 @@ class OAuthBase
                 $data = current($data['errors']);
             }
 
+            if (empty($data['message']) && !empty($data['error'])) {
+                $data['message'] = $data['error'];
+            }
+
             if (!isset($data['code']) || empty($data['code'])) {
                 $data['code'] = 0;
             }
 
             throw new TwitterException($data['message'], $data['code']);
         }
+
+        unset($response, $data);
+    }
+
+    /**
+     * Build a multipart message
+     *
+     * @param string $mimeBoundary  MIME boundary ID
+     * @param string $filename  File location
+     * @return string  Multipart message
+     */
+    protected function buildMultipart($mimeBoundary, $filename)
+    {
+        $binary = $this->getBinaryFile($filename);
+
+        $details = pathinfo($filename);
+
+        $type = $this->supportedMimes($details['extension']);
+
+        $data = '--' . $mimeBoundary . static::EOL;
+        $data .= 'Content-Disposition: form-data; name="media"; filename="' . $details['basename'] . '"' . static::EOL;
+        $data .= 'Content-Type: ' . $type . static::EOL . static::EOL;
+        $data .= $binary . static::EOL;
+        $data .= '--' . $mimeBoundary . '--' . static::EOL . static::EOL;
+
+        unset($mimeBoundary, $filename, $binary, $details, $type);
+
+        return $data;
+    }
+
+    /**
+     * Twitter supported MIME types for media upload
+     *
+     * @param string $mime  File extension
+     * @return mixed  MIME type
+     * @throws UnsupportedMime
+     */
+    protected function supportedMimes($mime)
+    {
+        $mimes = array(
+            'png' => 'image/png',
+            'jpe' => 'image/jpeg',
+            'jpeg' => 'image/jpeg',
+            'jpg' => 'image/jpeg',
+            'gif' => 'image/gif',
+        );
+
+        if (isset($mimes[$mime])) {
+            return $mimes[$mime];
+        }
+
+        throw new UnsupportedMime;
+    }
+
+    /**
+     * Get binary data of a file
+     *
+     * @param string $filename  File location
+     * @return string
+     * @throws FileNotFound
+     * @throws FileNotReadable
+     */
+    protected function getBinaryFile($filename)
+    {
+        if (!file_exists($filename)) {
+            throw new FileNotFound;
+        }
+
+        if (!is_readable($filename)) {
+            throw new FileNotReadable;
+        }
+
+        ob_start();
+
+        readfile($filename);
+
+        $binary = ob_get_contents();
+
+        ob_end_clean();
+
+        unset($filename);
+
+        return $binary;
     }
 }

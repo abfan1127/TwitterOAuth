@@ -18,7 +18,48 @@ namespace TwitterOAuth;
 
 class SingleUser extends OAuthBase implements OAuthInterface
 {
-    protected $url = 'https://api.twitter.com/1.1/';
+    protected $url = array(
+        'domain' => 'https://api.twitter.com/1.1/',
+        'upload' => 'https://upload.twitter.com/1.1/',
+    );
+
+
+    /**
+     * Send a POST call with media upload to Twitter API via OAuth
+     *
+     * @param string $call  Twitter resource string
+     * @param string $filename  File location to upload
+     * @return mixed  Output with selected format
+     * @throws Exception\CurlException
+     * @throws Exception\TwitterException
+     */
+    public function postMedia($call, $filename)
+    {
+        $this->method = 'POST';
+
+        $this->call = $call;
+
+        $mimeBoundary = sha1($call . microtime());
+
+        $params = array(
+            'post' => $this->buildMultipart($mimeBoundary, $filename),
+            'headers' => $this->buildUploadMediaHeader($mimeBoundary),
+        );
+
+        $response = $this->curl->send($this->getUrl(), $params);
+
+        $obj = json_decode($response['body']);
+
+        if (!$obj || !isset($obj->token_type) || $obj->token_type != 'bearer') {
+            $this->findExceptions($response);
+        }
+
+        $this->headers = $response['headers'];
+
+        unset($call, $filename, $mimeBoundary, $params, $obj);
+
+        return $this->serializer->format($response['body']);
+    }
 
 
     /**
@@ -28,7 +69,17 @@ class SingleUser extends OAuthBase implements OAuthInterface
      */
     protected function getUrl()
     {
-        return $this->url . $this->call . '.json';
+        $key = 'domain';
+
+        $trace = end(debug_backtrace());
+
+        if (!empty($trace) && !empty($trace['function']) && $trace['function'] == 'postMedia') {
+            $key = 'upload';
+        }
+
+        unset($trace);
+
+        return $this->url[$key] . $this->call . '.json';
     }
 
     /**
@@ -131,6 +182,21 @@ class SingleUser extends OAuthBase implements OAuthInterface
     {
         return array(
             'Authorization: OAuth ' . $this->getOauthString(),
+            'Expect:'
+        );
+    }
+
+    /**
+     * Building upload media headers
+     *
+     * @param string $mimeBoundary  MIME boundary ID
+     * @return array  HTTP headers
+     */
+    protected function buildUploadMediaHeader($mimeBoundary)
+    {
+        return array(
+            'Authorization: OAuth ' . $this->getOauthString(),
+            'Content-Type: multipart/form-data; boundary=' . $mimeBoundary,
             'Expect:'
         );
     }
