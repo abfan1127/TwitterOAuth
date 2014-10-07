@@ -16,6 +16,7 @@
         "php": ">=5.3",
         "ext-curl": "*",
         "ext-json": "*",
+        "lib-curl": "*",
         "lib-openssl": "*"
     },
     "autoload": {
