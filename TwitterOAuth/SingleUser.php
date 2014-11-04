@@ -23,6 +23,8 @@ class SingleUser extends OAuthBase implements OAuthInterface
         'upload' => 'https://upload.twitter.com/1.1/',
     );
 
+    protected $withMedia = null;
+
 
     /**
      * Send a POST call with media upload to Twitter API via OAuth
@@ -38,6 +40,8 @@ class SingleUser extends OAuthBase implements OAuthInterface
         $this->method = 'POST';
 
         $this->call = $call;
+
+        $this->withMedia = true;
 
         $mimeBoundary = sha1($call . microtime());
 
@@ -56,6 +60,8 @@ class SingleUser extends OAuthBase implements OAuthInterface
 
         $this->headers = $response['headers'];
 
+        $this->withMedia = null;
+
         unset($call, $filename, $mimeBoundary, $params, $obj);
 
         return $this->serializer->format($response['body']);
@@ -71,9 +77,7 @@ class SingleUser extends OAuthBase implements OAuthInterface
     {
         $key = 'domain';
 
-        $trace = end(debug_backtrace());
-
-        if (!empty($trace) && !empty($trace['function']) && $trace['function'] == 'postMedia') {
+        if (isset($this->withMedia) && $this->withMedia === true) {
             $key = 'upload';
         }
 
