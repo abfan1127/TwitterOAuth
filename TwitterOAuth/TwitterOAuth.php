@@ -185,7 +185,15 @@ class TwitterOAuth
             }
         }
 
-        if ($this->encoded_bearer_credentials && !$this->bearer_access_token) {
+        $oauth_calls = [
+            'oauth/request_token',
+            // these are only commented out because they are untested
+            //'oauth/access_token',       // untested
+            //'oauth2/invalidate_token',  // untested
+            //'oauth2/token'              // untested
+        ];
+
+        if (($this->encoded_bearer_credentials && !$this->bearer_access_token) || in_array($this->call, $oauth_calls)) {
             $url = $this->auth_url . $this->call;
         } else {
             $url = $this->url . $this->call . '.json' . $getParams;
@@ -473,9 +481,24 @@ class TwitterOAuth
 
         $this->response = substr($response, $header_size);
 
+        $responseCode = curl_getinfo($c, CURLINFO_HTTP_CODE);
+
         curl_close($c);
 
         unset($response, $options, $c);
+
+        /**
+         * oauth responses are not json. they need to be processed differently
+         * I only know oauth/request_token, there may be others... this may change to in_array(...)
+         */
+        if($this->call == 'oauth/request_token') {
+            if($responseCode == 200) {
+                parse_str($this->response, $responseArray);
+                return $this->processOutput(json_encode($responseArray));
+            } else {
+                throw new TwitterException(str_replace(array("\n", "\r", "\t"), '', $url.' : '.strip_tags($this->response)), 0);
+            }
+        }
 
         if (!in_array($this->response[0], array('{', '['))) {
             throw new TwitterException("($url) ".str_replace(array("\n", "\r", "\t"), '', strip_tags($this->response)), 0);
