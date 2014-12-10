@@ -21,7 +21,12 @@ class SingleUser extends OAuthBase implements OAuthInterface
     protected $url = array(
         'domain' => 'https://api.twitter.com/1.1/',
         'upload' => 'https://upload.twitter.com/1.1/',
+        'oauth'  => 'https://api.twitter.com/'
     );
+
+    protected $nonJsonEndpoints = [
+        'oauth/request_token',
+    ];
 
     protected $withMedia = null;
 
@@ -77,13 +82,21 @@ class SingleUser extends OAuthBase implements OAuthInterface
     {
         $key = 'domain';
 
+        if(in_array($this->call, $this->nonJsonEndpoints)) {
+            $key = 'oauth';
+        }
+
         if (isset($this->withMedia) && $this->withMedia === true) {
             $key = 'upload';
         }
 
         unset($trace);
 
-        return $this->url[$key] . $this->call . '.json';
+        if(!in_array($this->call, $this->nonJsonEndpoints)) {
+            return $this->url[$key] . $this->call . '.json';
+        } else {
+            return $this->url[$key] . $this->call;
+        }
     }
 
     /**

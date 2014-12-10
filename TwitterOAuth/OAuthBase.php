@@ -150,6 +150,11 @@ class OAuthBase
 
         unset($call, $postParams, $getParams);
 
+        if(in_array($this->call, $this->nonJsonEndpoints)) {
+            parse_str($response['body'], $data);
+            return $data;
+        }
+
         return $this->serializer->format($response['body']);
     }
 
@@ -169,7 +174,6 @@ class OAuthBase
             'post' => $this->postParams,
             'headers' => $this->buildRequestHeader(),
         );
-
         return $this->curl->send($url, $params);
     }
 
@@ -183,7 +187,9 @@ class OAuthBase
     {
         $response = $response['body'];
 
-        $data = json_decode($response, true);
+        if(in_array($this->call, $this->nonJsonEndpoints)) {
+            return;
+        }
 
         if (isset($response[0]) && $response[0] !== '{' && $response[0] !== '[' && !$data) {
             throw new TwitterException($response, 0);
